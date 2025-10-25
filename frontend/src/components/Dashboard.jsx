@@ -3,7 +3,8 @@ import StatsCards from "./StatsCards";
 import AddLogForm from "./AddLogForm";
 import Recommendations from "./Recommendations";
 import RecentLogs from "./RecentLogs";
-import API from "../api/axiosConfig"; // ✅ Import centralized axios setup
+import Navbar from "./Navbar"; // ✅ Import Navbar
+import API from "../api/axiosConfig";
 
 export default function ElderlyWellnessDashboard() {
     const [logs, setLogs] = useState([]);
@@ -19,6 +20,7 @@ export default function ElderlyWellnessDashboard() {
     const [routineActivity, setRoutineActivity] = useState("");
     const [routineDuration, setRoutineDuration] = useState("");
 
+    // Check token & fetch data
     useEffect(() => {
         const token = localStorage.getItem("token");
         if (token) {
@@ -30,7 +32,6 @@ export default function ElderlyWellnessDashboard() {
             window.location.href = "/login";
         }
     }, []);
-
 
     // 🔹 FETCH ALL LOGS
     async function fetchLogs() {
@@ -83,7 +84,7 @@ export default function ElderlyWellnessDashboard() {
             }
 
             alert("✅ Log added successfully!");
-            fetchLogs(); // refresh logs
+            fetchLogs();
             resetForm();
         } catch (err) {
             console.error("❌ Error adding log:", err);
@@ -91,7 +92,7 @@ export default function ElderlyWellnessDashboard() {
         }
     }
 
-    // 🔹 REMOVE LOG (optional for future delete API)
+    // 🔹 REMOVE LOG
     async function removeLog(id) {
         try {
             await API.delete(`/api/logs/${id}`);
@@ -101,27 +102,27 @@ export default function ElderlyWellnessDashboard() {
         }
     }
 
-    // 🔹 FETCH USER STATS (future ML or insights API)
+    // 🔹 FETCH USER STATS (future ML)
     async function fetchStats() {
         try {
-            const res = await API.get("/api/insights/weekly"); // placeholder
+            const res = await API.get("/api/insights/weekly");
             setStats(res.data);
         } catch {
             setStats(null);
         }
     }
 
-    // 🔹 FETCH RECOMMENDATIONS (future ML integration)
+    // 🔹 FETCH RECOMMENDATIONS (future ML)
     async function fetchRecommendations() {
         try {
-            const res = await API.get("/api/insights/recommendations"); // placeholder
+            const res = await API.get("/api/insights/recommendations");
             setRecommendations(res.data.recommendations || []);
         } catch {
             setRecommendations([]);
         }
     }
 
-    // 🔹 RESET FORM AFTER SUBMISSION
+    // 🔹 RESET FORM
     function resetForm() {
         setMoodScore("");
         setMoodNote("");
@@ -132,43 +133,49 @@ export default function ElderlyWellnessDashboard() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 p-6">
-            <div className="max-w-6xl mx-auto">
-                <header className="mb-8">
-                    <h1 className="text-2xl font-semibold text-gray-900">
-                        Welcome back 👋
-                    </h1>
-                    <p className="text-gray-600">
-                        A quick overview of your wellness journey.
-                    </p>
-                </header>
+        <div className="min-h-screen bg-gray-50">
+            {/* 🌿 Navbar always on top */}
+            <Navbar />
 
-                <StatsCards stats={stats} />
+            {/* Dashboard Main Content */}
+            <div className="pt-24 px-6 pb-10">
+                <div className="max-w-6xl mx-auto">
+                    <header className="mb-8">
+                        <h1 className="text-2xl font-semibold text-gray-900">
+                            Welcome back 👋
+                        </h1>
+                        <p className="text-gray-600">
+                            A quick overview of your wellness journey.
+                        </p>
+                    </header>
 
-                <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <AddLogForm
-                        formType={formType}
-                        setFormType={setFormType}
-                        moodScore={moodScore}
-                        setMoodScore={setMoodScore}
-                        moodNote={moodNote}
-                        setMoodNote={setMoodNote}
-                        expenseAmount={expenseAmount}
-                        setExpenseAmount={setExpenseAmount}
-                        expenseCategory={expenseCategory}
-                        setExpenseCategory={setExpenseCategory}
-                        routineActivity={routineActivity}
-                        setRoutineActivity={setRoutineActivity}
-                        routineDuration={routineDuration}
-                        setRoutineDuration={setRoutineDuration}
-                        addLog={addLog}
-                    />
+                    <StatsCards stats={stats} />
 
-                    <div className="space-y-6">
-                        <Recommendations recommendations={recommendations} />
-                        <RecentLogs logs={logs} removeLog={removeLog} />
-                    </div>
-                </section>
+                    <section className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                        <AddLogForm
+                            formType={formType}
+                            setFormType={setFormType}
+                            moodScore={moodScore}
+                            setMoodScore={setMoodScore}
+                            moodNote={moodNote}
+                            setMoodNote={setMoodNote}
+                            expenseAmount={expenseAmount}
+                            setExpenseAmount={setExpenseAmount}
+                            expenseCategory={expenseCategory}
+                            setExpenseCategory={setExpenseCategory}
+                            routineActivity={routineActivity}
+                            setRoutineActivity={setRoutineActivity}
+                            routineDuration={routineDuration}
+                            setRoutineDuration={setRoutineDuration}
+                            addLog={addLog}
+                        />
+
+                        <div className="space-y-6">
+                            <Recommendations recommendations={recommendations} />
+                            <RecentLogs logs={logs} removeLog={removeLog} />
+                        </div>
+                    </section>
+                </div>
             </div>
         </div>
     );
