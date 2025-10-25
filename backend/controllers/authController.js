@@ -64,9 +64,15 @@ export const registerUser = async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Registration Error:", error);
-        res.status(500).json({ message: "Server error", error: error.message });
+        console.error("🚨 Registration Detailed Error:");
+        console.error(JSON.stringify(error, null, 2));  // full error object
+        res.status(500).json({
+            message: "Server error",
+            error: error.message || "Unknown error",
+            details: error.errors || error.stack,
+        });
     }
+
 };
 
 export const loginUser = async (req, res) => {
