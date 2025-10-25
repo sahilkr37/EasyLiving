@@ -1,4 +1,4 @@
-# EasyLiving — Elderly Wellness Support System
+# EasyLiving — Predictive Support for Elderly Living Alone
 
 ## Overview
 
