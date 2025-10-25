@@ -1,37 +1,76 @@
+import React from "react";
 
 export default function AddLogForm({
     formType, setFormType,
-    moodScore, setMoodScore, moodNote, setMoodNote,
-    expenseAmount, setExpenseAmount, expenseCategory, setExpenseCategory,
-    routineActivity, setRoutineActivity, routineDuration, setRoutineDuration,
+    moodScore, setMoodScore,
+    moodNote, setMoodNote,
+    expenseAmount, setExpenseAmount,
+    expenseCategory, setExpenseCategory,
+    routineActivity, setRoutineActivity,
+    routineDuration, setRoutineDuration,
     addLog
 }) {
     return (
         <div className="bg-white p-6 rounded-lg shadow-sm">
-            <h2 className="text-lg font-semibold mb-4">Add New Log Entry</h2>
-            <hr className="mb-4 text-gray-300  " />
+            <h2 className="text-lg font-medium mb-2">Add New Log</h2>
+            <p className="text-sm text-gray-500 mb-4">Track your daily wellness activities.</p>
+
             <form onSubmit={addLog} className="space-y-4">
+                {/* Select Log Type */}
                 <div>
-                    <label className="block text-sm text-gray-600">Log Type</label>
-                    <select value={formType} onChange={e => setFormType(e.target.value)}
-                        className="mt-1 p-2 border border-gray-300  rounded w-full cursor-pointer">
-                        <option value="mood">Mood</option>
-                        <option value="expense">Expense</option>
-                        <option value="routine">Routine</option>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Log Type
+                    </label>
+                    <select
+                        value={formType}
+                        onChange={(e) => setFormType(e.target.value)}
+                        className="border border-gray-300 rounded-md p-2 w-full"
+                    >
+                        <option value="mood">Mood Log</option>
+                        <option value="expense">Expense Log</option>
+                        <option value="routine">Activity Log</option>
                     </select>
                 </div>
 
+                {/* Conditional Fields */}
                 {formType === "mood" && (
                     <>
                         <div>
-                            <label className="block text-sm text-gray-600">Score (1-5)</label>
-                            <input type="number" min="1" max="5" value={moodScore} onChange={e => setMoodScore(e.target.value)}
-                                className="mt-1 p-2 border border-gray-300 rounded w-full" placeholder="e.g. 4" />
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Sleep Hours
+                            </label>
+                            <input
+                                type="number"
+                                min="0"
+                                max="24"
+                                placeholder="e.g., 7"
+                                className="border rounded-md p-2 w-full"
+                                onChange={(e) => setMoodScore(e.target.value)}
+                            />
                         </div>
                         <div>
-                            <label className="block text-sm text-gray-600">Notes / Details</label>
-                            <textarea value={moodNote} onChange={e => setMoodNote(e.target.value)}
-                                className="mt-1 p-2 border border-gray-300 rounded w-full" placeholder="e.g. Enjoyed a good book." />
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Caffeine Intake (mg)
+                            </label>
+                            <input
+                                type="number"
+                                min="0"
+                                placeholder="e.g., 100"
+                                className="border rounded-md p-2 w-full"
+                                onChange={(e) => setExpenseAmount(e.target.value)} // repurposing for simplicity
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Mood Note
+                            </label>
+                            <textarea
+                                rows="3"
+                                value={moodNote}
+                                onChange={(e) => setMoodNote(e.target.value)}
+                                placeholder="Write how you felt today..."
+                                className="border rounded-md p-2 w-full"
+                            />
                         </div>
                     </>
                 )}
@@ -39,14 +78,34 @@ export default function AddLogForm({
                 {formType === "expense" && (
                     <>
                         <div>
-                            <label className="block text-sm text-gray-600">Amount (₹)</label>
-                            <input type="number" value={expenseAmount} onChange={e => setExpenseAmount(e.target.value)}
-                                className="mt-1 p-2 border  rounded w-full" placeholder="e.g. 200" />
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Expense Category
+                            </label>
+                            <select
+                                value={expenseCategory}
+                                onChange={(e) => setExpenseCategory(e.target.value)}
+                                className="border rounded-md p-2 w-full"
+                            >
+                                <option value="">Select Category</option>
+                                <option value="food">Food</option>
+                                <option value="medical">Medical</option>
+                                <option value="transport">Transport</option>
+                                <option value="personal">Personal</option>
+                            </select>
                         </div>
+
                         <div>
-                            <label className="block text-sm text-gray-600">Category</label>
-                            <input type="text" value={expenseCategory} onChange={e => setExpenseCategory(e.target.value)}
-                                className="mt-1 p-2 border border-gray-300 rounded w-full" placeholder="e.g. Groceries" />
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Expense Amount (₹)
+                            </label>
+                            <input
+                                type="number"
+                                value={expenseAmount}
+                                onChange={(e) => setExpenseAmount(e.target.value)}
+                                placeholder="e.g., 120"
+                                className="border rounded-md p-2 w-full"
+                                required
+                            />
                         </div>
                     </>
                 )}
@@ -54,20 +113,55 @@ export default function AddLogForm({
                 {formType === "routine" && (
                     <>
                         <div>
-                            <label className="block text-sm text-gray-600">Activity</label>
-                            <input type="text" value={routineActivity} onChange={e => setRoutineActivity(e.target.value)}
-                                className="mt-1 p-2 border border-gray-300 rounded w-full" placeholder="e.g. Morning walk" />
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Activity Name
+                            </label>
+                            <input
+                                type="text"
+                                value={routineActivity}
+                                onChange={(e) => setRoutineActivity(e.target.value)}
+                                placeholder="e.g., Evening Walk"
+                                className="border rounded-md p-2 w-full"
+                                required
+                            />
                         </div>
+
                         <div>
-                            <label className="block text-sm text-gray-600">Duration (minutes)</label>
-                            <input type="number" value={routineDuration} onChange={e => setRoutineDuration(e.target.value)}
-                                className="mt-1 p-2 border border-gray-300 rounded w-full" placeholder="e.g. 30" />
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Duration (minutes)
+                            </label>
+                            <input
+                                type="number"
+                                value={routineDuration}
+                                onChange={(e) => setRoutineDuration(e.target.value)}
+                                placeholder="e.g., 30"
+                                className="border rounded-md p-2 w-full"
+                                required
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Mood Score (1–5)
+                            </label>
+                            <input
+                                type="number"
+                                value={moodScore}
+                                onChange={(e) => setMoodScore(e.target.value)}
+                                min="1"
+                                max="5"
+                                className="border rounded-md p-2 w-full"
+                                required
+                            />
                         </div>
                     </>
                 )}
 
-                <button type="submit"
-                    className="w-full bg-[#1F7D53] text-white py-2 rounded hover:bg-green-700 transition cursor-pointer">
+                {/* Submit */}
+                <button
+                    type="submit"
+                    className="bg-green-600 text-white w-full py-2 rounded-md hover:bg-green-700 transition"
+                >
                     Add Log
                 </button>
             </form>
