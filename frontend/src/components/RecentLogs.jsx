@@ -6,8 +6,8 @@ export default function RecentLogs({ logs, removeLog }) {
             <h2 className="text-lg font-semibold mb-2 ">Recent Logs</h2>
             <hr className="mb-4 text-gray-300  " />
             <div className="space-y-2 max-h-56 overflow-auto">
-                {logs.length > 0 ? logs.map(l => (
-                    <div key={l.id} className="flex justify-between items-center p-3 bg-green-50 rounded">
+                {logs.length > 0 ? logs.map((l, i) => (
+                    <div key={l._id || l.id || i} className="flex justify-between items-center p-3 bg-green-50 rounded">
                         <div>
                             <div className="text-sm font-medium text-gray-900">
                                 {l.type.charAt(0).toUpperCase() + l.type.slice(1)} — {new Date(l.date).toISOString().split("T")[0]}
