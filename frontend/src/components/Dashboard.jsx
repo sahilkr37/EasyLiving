@@ -20,12 +20,17 @@ export default function ElderlyWellnessDashboard() {
     const [exerciseMinutes, setExerciseMinutes] = useState("");
     const [caffeineMg, setCaffeineMg] = useState("");
     const [moodNote, setMoodNote] = useState("");
+    const [predictedMood, setPredictedMood] = useState(null);
 
     // 🔹 Expense log states
     const [foodExpense, setFoodExpense] = useState("");
     const [medicalExpense, setMedicalExpense] = useState("");
     const [transportExpense, setTransportExpense] = useState("");
     const [personalExpense, setPersonalExpense] = useState("");
+    const [predictedExpense, setPredictedExpense] = useState(null);
+    const [expenseRecommendation, setExpenseRecommendation] = useState("");
+
+
 
     // 🔹 Activity log states
     const [activityName, setActivityName] = useState("");
@@ -91,11 +96,19 @@ export default function ElderlyWellnessDashboard() {
     async function fetchRecommendations() {
         try {
             const res = await API.get("/api/insights/recommendations");
-            setRecommendations(res.data.recommendations || []);
+            const baseRecs = res.data.recommendations || [];
+    
+            // Add expense insight if available
+            const combined = expenseRecommendation
+                ? [...baseRecs, expenseRecommendation]
+                : baseRecs;
+    
+            setRecommendations(combined);
         } catch {
-            setRecommendations([]);
+            setRecommendations(expenseRecommendation ? [expenseRecommendation] : []);
         }
     }
+    
 
     // 🔹 Reset form fields
     function resetForm() {
@@ -120,20 +133,60 @@ export default function ElderlyWellnessDashboard() {
         e.preventDefault();
         try {
             if (formType === "mood") {
-                await API.post("/api/logs/mood/add", {
-                    moodNote,
-                    sleepHours: Number(sleepHours),
-                    screenTimeHours: Number(screenTime),
-                    exerciseMinutes: Number(exerciseMinutes),
-                    caffeineMg: Number(caffeineMg),
+                // 🚨 Validate fields before sending to backend
+                if (!sleepHours || !screenTime || !exerciseMinutes || !caffeineMg) {
+                    alert("Please fill all mood input fields before submitting.");
+                    return;
+                }
+            
+                // 🧠 Send clean payload to FastAPI
+                const res = await API.post("/api/ml/predict/mood", {
+                    sleepHours: parseFloat(sleepHours),
+                    screenTimeHours: parseFloat(screenTime),
+                    exerciseMinutes: parseFloat(exerciseMinutes),
+                    caffeineMg: parseFloat(caffeineMg),
+                    textInput: moodNote || "neutral",
                 });
+            
+                const predicted = res.data.predicted_mood || "Unknown";
+                setPredictedMood(predicted);
+            
+                // 🌿 Handle mood recommendations from backend (if any)
+                if (res.data.recommendations && res.data.recommendations.length > 0) {
+                    setRecommendations((prev) => [
+                        ...prev,
+                        ...res.data.recommendations,
+                    ]);
+                }
+            
+                alert(`✅ Mood log added! Predicted mood: ${predicted}`);
             } else if (formType === "expense") {
-                await API.post("/api/logs/expense/add", {
+                const expenseData = {
                     foodExpense: Number(foodExpense) || 0,
                     medicalExpense: Number(medicalExpense) || 0,
                     transportExpense: Number(transportExpense) || 0,
                     personalExpense: Number(personalExpense) || 0,
+                };
+            
+                // Save expense log to DB
+                await API.post("/api/logs/expense/add", expenseData);
+
+                const historyRes = await API.get("/api/insights/user-expenses/last7");
+                const last7Expenses = historyRes.data.recent_expenses || [];
+            
+                // 🔹 Call ML model for expense prediction
+                const res = await API.post("/api/ml/predict/expense", {
+                    recent_expenses: last7Expenses,
+                    avg7_total: 0,
+                    days: 7,
                 });
+            
+                const predicted = res.data.predicted_cumulative || 0;
+                setPredictedExpense(predicted);
+                setExpenseRecommendation(res.data.recommendation || "");
+            
+                alert(`✅ Expense log added! Predicted 7-day total: ₹${predicted.toFixed(2)}`);
+            
             } else if (formType === "activity") {
                 await API.post("/api/logs/activity/add", {
                     activityName,
@@ -167,7 +220,13 @@ export default function ElderlyWellnessDashboard() {
                         </p>
                     </header>
 
-                    <StatsCards stats={stats} />
+                    <StatsCards 
+                        stats={stats} 
+                        predictedMood={predictedMood}
+                        predictedExpense={predictedExpense}
+
+                    />
+
 
                     <section className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
                         <AddLogForm
@@ -208,7 +267,11 @@ export default function ElderlyWellnessDashboard() {
                         />
 
                         <div className="space-y-6">
-                            <Recommendations recommendations={recommendations} />
+                            <Recommendations
+                                recommendations={recommendations}
+                                expenseRecommendation={expenseRecommendation}
+                                predictedMood={predictedMood}
+                            />
                             <RecentLogs logs={logs} removeLog={removeLog} />
                         </div>
                     </section>
