@@ -1,7 +1,7 @@
 import express from "express";
 import { protect } from "../middleware/authMiddleware.js";
-//import Expense from "../models/Expense.js"; // ✅ Make sure this is your correct model
 import Expense from "../models/ExpenseLog.js";
+
 const router = express.Router();
 
 /**
@@ -14,35 +14,27 @@ router.get("/user-expenses/last7", protect, async (req, res) => {
 
     // ✅ Aggregate expenses by day for that user
     const expenses = await Expense.aggregate([
-      { $match: { user: userId } },
+      { $match: { userId: userId } }, // ✅ corrected field name
       {
         $group: {
           _id: {
             $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
           },
-          totalExpense: {
-            $sum: {
-              $add: [
-                { $ifNull: ["$foodExpense", 0] },
-                { $ifNull: ["$medicalExpense", 0] },
-                { $ifNull: ["$transportExpense", 0] },
-                { $ifNull: ["$personalExpense", 0] },
-              ],
-            },
-          },
+          totalExpense: { $sum: "$totalExpense" }, // ✅ we already store totalExpense in schema
         },
       },
       { $sort: { _id: -1 } }, // newest first
       { $limit: 7 },
     ]);
 
-    // ✅ Convert MongoDB result into an array of numbers, oldest to newest
-    const dailyTotals = expenses
-      .map((e) => e.totalExpense)
-      .reverse();
+    // ✅ Convert MongoDB result into array sorted oldest → newest
+    const dailyTotals = expenses.reverse();
 
     res.status(200).json({
-      recent_expenses: dailyTotals,
+      recent_expenses: dailyTotals.map((e) => ({
+        date: e._id,
+        totalExpense: e.totalExpense,
+      })),
     });
   } catch (err) {
     console.error("Error fetching user expenses:", err);

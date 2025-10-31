@@ -1,7 +1,7 @@
 import React from "react";
 import { Lightbulb } from "lucide-react"; // icon library
 
-export default function Recommendations({ recommendations, expenseRecommendation, predictedMood  }) {
+export default function Recommendations({ recommendations, expenseRecommendation, predictedMood }) {
     return (
         <div className="bg-white p-6 rounded-lg shadow-sm">
             <h2 className="text-lg font-medium mb-1">Recommendations</h2>
@@ -29,7 +29,7 @@ export default function Recommendations({ recommendations, expenseRecommendation
                         🧠 Mood Insight ({predictedMood}):
                     </p>
                     {predictedMood.toLowerCase().includes("happy") ||
-                    predictedMood.toLowerCase().includes("neutral") ? (
+                        predictedMood.toLowerCase().includes("neutral") ? (
                         <ul className="list-disc list-inside text-sm mt-2 text-blue-800">
                             <li>Keep maintaining your positive habits and regular routines.</li>
                             <li>Share your good energy — connect with friends or family.</li>
@@ -48,20 +48,41 @@ export default function Recommendations({ recommendations, expenseRecommendation
             {/* 🔹 Expense-based Recommendation Section */}
             {expenseRecommendation && (
                 <div className="mt-4 bg-green-50 border border-green-300 p-3 rounded-md">
-                    <p className="text-sm font-medium text-gray-800">💰 Expense Insight:</p>
-                    <p
-                        className={`text-sm mt-1 ${
-                            expenseRecommendation.includes("⚠️")
+                    <p className="text-sm font-medium text-gray-800 mb-2">
+                        💰 Expense Insight:
+                    </p>
+
+                    {Array.isArray(expenseRecommendation) ? (
+                        <ul className="list-disc ml-5 space-y-1">
+                            {expenseRecommendation.map((rec, index) => (
+                                <li
+                                    key={index}
+                                    className={`text-sm ${rec.includes("⚠️")
+                                        ? "text-red-600"
+                                        : rec.includes("✅")
+                                            ? "text-green-600"
+                                            : "text-yellow-700"
+                                        }`}
+                                >
+                                    {rec}
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p
+                            className={`text-sm mt-1 ${expenseRecommendation.includes("⚠️")
                                 ? "text-red-600"
                                 : expenseRecommendation.includes("✅")
-                                ? "text-green-600"
-                                : "text-yellow-600"
-                        }`}
-                    >
-                        {expenseRecommendation}
-                    </p>
+                                    ? "text-green-600"
+                                    : "text-yellow-700"
+                                }`}
+                        >
+                            {expenseRecommendation}
+                        </p>
+                    )}
                 </div>
             )}
+
 
         </div>
     );

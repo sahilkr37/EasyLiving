@@ -16,37 +16,30 @@ router.post("/expense/add", protect, addExpenseLog);
 // ACTIVITY
 router.post("/activity/add", protect, addActivityLog);
 
-// 🧠 Get all Mood Logs for logged-in user
-router.get("/mood/all", protect, async (req, res) => {
+router.get("/all", protect, async (req, res) => {
     try {
-        const logs = await MoodLog.find({ userId: req.user.id }).sort({ createdAt: -1 });
-        res.status(200).json({ logs });
+        const userId = req.user.id;
+
+        const [moods, expenses, activities] = await Promise.all([
+            MoodLog.find({ userId }).sort({ createdAt: -1 }),
+            ExpenseLog.find({ userId }).sort({ createdAt: -1 }),
+            ActivityLog.find({ userId }).sort({ createdAt: -1 }),
+        ]);
+
+        const merged = [
+            ...moods.map((l) => ({ ...l._doc, type: "mood" })),
+            ...expenses.map((l) => ({ ...l._doc, type: "expense" })),
+            ...activities.map((l) => ({ ...l._doc, type: "routine" })),
+        ];
+
+        merged.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        res.json({ logs: merged });
     } catch (err) {
-        console.error("Error fetching mood logs:", err);
-        res.status(500).json({ message: "Server error fetching mood logs" });
+        console.error("❌ Error fetching all logs:", err);
+        res.status(500).json({ message: "Failed to fetch all logs." });
     }
 });
 
-// 💰 Get all Expense Logs for logged-in user
-router.get("/expense/all", protect, async (req, res) => {
-    try {
-        const logs = await ExpenseLog.find({ userId: req.user.id }).sort({ createdAt: -1 });
-        res.status(200).json({ logs });
-    } catch (err) {
-        console.error("Error fetching expense logs:", err);
-        res.status(500).json({ message: "Server error fetching expense logs" });
-    }
-});
-
-// 🏃 Get all Activity Logs for logged-in user
-router.get("/activity/all", protect, async (req, res) => {
-    try {
-        const logs = await ActivityLog.find({ userId: req.user.id }).sort({ createdAt: -1 });
-        res.status(200).json({ logs });
-    } catch (err) {
-        console.error("Error fetching activity logs:", err);
-        res.status(500).json({ message: "Server error fetching activity logs" });
-    }
-});
 
 export default router;

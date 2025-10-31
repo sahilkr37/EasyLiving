@@ -34,7 +34,7 @@ export const predictAndSaveMood = async (req, res) => {
       screenTimeHours,
       exerciseMinutes,
       caffeineMg,
-      textInput,
+      moodNote: textInput,
       predictedMood,
       modelConfidence: confidence,
     });

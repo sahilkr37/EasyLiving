@@ -7,6 +7,7 @@ import Navbar from "./Navbar";
 import API from "../api/axiosConfig";
 
 export default function ElderlyWellnessDashboard() {
+    const userId = localStorage.getItem("userId");
     const [logs, setLogs] = useState([]);
     const [stats, setStats] = useState(null);
     const [recommendations, setRecommendations] = useState([]);
@@ -40,6 +41,7 @@ export default function ElderlyWellnessDashboard() {
     // Check token
     useEffect(() => {
         const token = localStorage.getItem("token");
+        const userId = localStorage.getItem("userId");
         if (token) {
             fetchLogs();
             fetchStats();
@@ -50,25 +52,12 @@ export default function ElderlyWellnessDashboard() {
         }
     }, []);
 
-    // 🔹 Fetch all logs
     async function fetchLogs() {
         try {
-            const [moods, expenses, activities] = await Promise.all([
-                API.get("/api/logs/mood/all"),
-                API.get("/api/logs/expense/all"),
-                API.get("/api/logs/activity/all"),
-            ]);
-
-            const merged = [
-                ...moods.data.logs.map((l) => ({ ...l, type: "Mood" })),
-                ...expenses.data.logs.map((l) => ({ ...l, type: "Expense" })),
-                ...activities.data.logs.map((l) => ({ ...l, type: "Activity" })),
-            ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-            setLogs(merged);
+            const res = await API.get("/api/logs/all");
+            setLogs(res.data.logs);
         } catch (err) {
             console.error("❌ Error fetching logs:", err);
-            alert("Failed to load logs. Please login again or check the server.");
         }
     }
 
@@ -97,18 +86,18 @@ export default function ElderlyWellnessDashboard() {
         try {
             const res = await API.get("/api/insights/recommendations");
             const baseRecs = res.data.recommendations || [];
-    
+
             // Add expense insight if available
             const combined = expenseRecommendation
                 ? [...baseRecs, expenseRecommendation]
                 : baseRecs;
-    
+
             setRecommendations(combined);
         } catch {
             setRecommendations(expenseRecommendation ? [expenseRecommendation] : []);
         }
     }
-    
+
 
     // 🔹 Reset form fields
     function resetForm() {
@@ -138,7 +127,7 @@ export default function ElderlyWellnessDashboard() {
                     alert("Please fill all mood input fields before submitting.");
                     return;
                 }
-            
+
                 // 🧠 Send clean payload to FastAPI
                 const res = await API.post("/api/ml/predict/mood", {
                     sleepHours: parseFloat(sleepHours),
@@ -147,10 +136,10 @@ export default function ElderlyWellnessDashboard() {
                     caffeineMg: parseFloat(caffeineMg),
                     textInput: moodNote || "neutral",
                 });
-            
+
                 const predicted = res.data.predicted_mood || "Unknown";
                 setPredictedMood(predicted);
-            
+
                 // 🌿 Handle mood recommendations from backend (if any)
                 if (res.data.recommendations && res.data.recommendations.length > 0) {
                     setRecommendations((prev) => [
@@ -158,7 +147,7 @@ export default function ElderlyWellnessDashboard() {
                         ...res.data.recommendations,
                     ]);
                 }
-            
+
                 alert(`✅ Mood log added! Predicted mood: ${predicted}`);
             } else if (formType === "expense") {
                 const expenseData = {
@@ -167,26 +156,41 @@ export default function ElderlyWellnessDashboard() {
                     transportExpense: Number(transportExpense) || 0,
                     personalExpense: Number(personalExpense) || 0,
                 };
-            
+
                 // Save expense log to DB
                 await API.post("/api/logs/expense/add", expenseData);
 
                 const historyRes = await API.get("/api/insights/user-expenses/last7");
                 const last7Expenses = historyRes.data.recent_expenses || [];
-            
-                // 🔹 Call ML model for expense prediction
-                const res = await API.post("/api/ml/predict/expense", {
-                    recent_expenses: last7Expenses,
-                    avg7_total: 0,
-                    days: 7,
-                });
-            
-                const predicted = res.data.predicted_cumulative || 0;
-                setPredictedExpense(predicted);
-                setExpenseRecommendation(res.data.recommendation || "");
-            
-                alert(`✅ Expense log added! Predicted 7-day total: ₹${predicted.toFixed(2)}`);
-            
+                const expenseValues = last7Expenses.map((e) =>
+                    typeof e === "object" ? e.totalExpense : e
+                );
+
+                const avg7_total =
+                    expenseValues.length > 0
+                        ? expenseValues.reduce((a, b) => a + b, 0) / expenseValues.length
+                        : 0;
+
+                // ✅ Send clean payload to ML model
+                if (expenseValues.length > 0) {
+                    const res = await API.post("/api/ml/predict/expense", {
+                        user_id: userId,
+                        recent_expenses: expenseValues,
+                        avg7_total,
+                        days: 7,
+                    });
+
+                    const predicted = res.data.predicted_cumulative || 0;
+                    setPredictedExpense(predicted);
+                    setExpenseRecommendation(res.data.recommendation || "");
+
+                    alert(`✅ Expense log added! Predicted 7-day total: ₹${predicted.toFixed(2)}`);
+                } else {
+                    alert("✅ Expense log added! Not enough history for prediction yet.");
+                }
+                await fetchStats();
+                await fetchLogs();
+
             } else if (formType === "activity") {
                 await API.post("/api/logs/activity/add", {
                     activityName,
@@ -220,8 +224,8 @@ export default function ElderlyWellnessDashboard() {
                         </p>
                     </header>
 
-                    <StatsCards 
-                        stats={stats} 
+                    <StatsCards
+                        stats={stats}
                         predictedMood={predictedMood}
                         predictedExpense={predictedExpense}
 
