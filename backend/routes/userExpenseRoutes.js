@@ -6,38 +6,52 @@ const router = express.Router();
 
 /**
  * 🧮 Route: GET /api/insights/user-expenses/last7
- * Fetch last 7 days of total expense (grouped by day) for logged-in user
+ * Fetch last 7 days of total expense (include 0s for missing days)
  */
 router.get("/user-expenses/last7", protect, async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // ✅ Aggregate expenses by day for that user
+    // 🗓️ Calculate 7 days ago
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    // 🧾 Aggregate user’s expenses by day
     const expenses = await Expense.aggregate([
-      { $match: { userId: userId } }, // ✅ corrected field name
+      {
+        $match: {
+          userId,
+          createdAt: { $gte: sevenDaysAgo },
+        },
+      },
       {
         $group: {
           _id: {
             $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
           },
-          totalExpense: { $sum: "$totalExpense" }, // ✅ we already store totalExpense in schema
+          totalExpense: { $sum: "$totalExpense" },
         },
       },
-      { $sort: { _id: -1 } }, // newest first
-      { $limit: 7 },
+      { $sort: { _id: 1 } }, // oldest → newest
     ]);
 
-    // ✅ Convert MongoDB result into array sorted oldest → newest
-    const dailyTotals = expenses.reverse();
+    // 🧩 Ensure exactly 7 days of data (fill missing with 0)
+    const result = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split("T")[0];
 
-    res.status(200).json({
-      recent_expenses: dailyTotals.map((e) => ({
-        date: e._id,
-        totalExpense: e.totalExpense,
-      })),
-    });
+      const match = expenses.find((e) => e._id === dateStr);
+      result.push({
+        date: dateStr,
+        totalExpense: match ? match.totalExpense : 0,
+      });
+    }
+
+    res.status(200).json({ recent_expenses: result });
   } catch (err) {
-    console.error("Error fetching user expenses:", err);
+    console.error("❌ Error fetching last 7 days of expenses:", err);
     res.status(500).json({
       error: "Failed to fetch last 7 days of user expenses",
     });

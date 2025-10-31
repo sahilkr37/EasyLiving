@@ -159,6 +159,7 @@ export default function ElderlyWellnessDashboard() {
 
                 // Save expense log to DB
                 await API.post("/api/logs/expense/add", expenseData);
+                await new Promise((r) => setTimeout(r, 800));
 
                 const historyRes = await API.get("/api/insights/user-expenses/last7");
                 const last7Expenses = historyRes.data.recent_expenses || [];
@@ -170,6 +171,13 @@ export default function ElderlyWellnessDashboard() {
                     expenseValues.length > 0
                         ? expenseValues.reduce((a, b) => a + b, 0) / expenseValues.length
                         : 0;
+
+                console.log("📤 Sending to FastAPI:", {
+                    user_id: userId,
+                    recent_expenses: expenseValues,
+                    avg7_total,
+                });
+
 
                 // ✅ Send clean payload to ML model
                 if (expenseValues.length > 0) {

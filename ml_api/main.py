@@ -132,29 +132,51 @@ def predict_expense(payload: ExpensePredictIn):
         raise HTTPException(status_code=503, detail="Expense model not loaded")
 
     try:
-        # 🧠 Validate user
-        if not payload.user_id:
-            raise HTTPException(status_code=400, detail="User ID required")
-        user = db.users.find_one({"_id": ObjectId(payload.user_id)})
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+        print("\n🧾 Incoming Data Summary:")
+        print("Recent Expenses:", payload.recent_expenses)
+        print("Avg7 Total:", payload.avg7_total)
+        print("User ID:", payload.user_id)
+        print()
 
-        # 🕓 Fetch recent logs
-        seven_days_ago = datetime.utcnow() - timedelta(days=7)
-        logs = list(db.expenselogs.find({
-            "userId": ObjectId(payload.user_id),
-            "$or": [{"createdAt": {"$gte": seven_days_ago}}, {"date": {"$gte": seven_days_ago}}]
-        }))
+        user_data = {}
+        user_id = payload.user_id
 
-        # 🧩 Category totals
+        # 🧠 1️⃣ Try to fetch user safely
+        if user_id:
+            try:
+                user_obj_id = ObjectId(user_id)
+                user_data = db.users.find_one({"_id": user_obj_id}) or {}
+            except Exception:
+                print("⚠️ Invalid user_id format — skipping DB lookup (using defaults)")
+                user_data = {}
+        else:
+            print("⚠️ No user_id provided — using default income/expense values")
+
+        # 🧩 2️⃣ Fetch recent logs if valid ObjectId provided
+        logs = []
+        if user_id and ObjectId.is_valid(user_id):
+            seven_days_ago = datetime.utcnow() - timedelta(days=7)
+            logs = list(
+                db.expenselogs.find({
+                    "userId": ObjectId(user_id),
+                    "$or": [
+                        {"createdAt": {"$gte": seven_days_ago}},
+                        {"date": {"$gte": seven_days_ago}},
+                    ]
+                })
+            )
+        else:
+            print("⚠️ Skipping expense log fetch (invalid or missing user_id)")
+
+        # 🧾 3️⃣ Safe category totals
         category_sums = {
             "food": sum(l.get("foodExpense", 0) for l in logs),
             "transport": sum(l.get("transportExpense", 0) for l in logs),
             "personal": sum(l.get("personalExpense", 0) for l in logs),
-            "medical": sum(l.get("medicalExpense", 0) for l in logs)
+            "medical": sum(l.get("medicalExpense", 0) for l in logs),
         }
 
-        # Overspend detection
+        # 💸 4️⃣ Safe daily totals
         daily_totals = [l.get("totalExpense", 0) for l in logs]
         avg_daily = np.mean(daily_totals) if daily_totals else 0
         overspend_days = sum(1 for v in daily_totals if v > avg_daily * 1.2)
@@ -167,7 +189,7 @@ def predict_expense(payload: ExpensePredictIn):
             "rarely"
         )
 
-        # Missing log frequency
+        # 🕓 5️⃣ Missing log frequency
         dates = sorted([
             (l.get("createdAt") if isinstance(l.get("createdAt"), datetime)
              else datetime.fromisoformat(str(l.get("createdAt"))))
@@ -180,36 +202,41 @@ def predict_expense(payload: ExpensePredictIn):
             "never"
         )
 
-        # Income data
-        monthly_income = float(user.get("monthly_income", 25000))
-        avg_monthly_spending = float(user.get("avg_monthly_expense", 18000))
+        # 💰 6️⃣ Income data (✅ fixed variable bug)
+        monthly_income = float(user_data.get("monthly_income", payload.monthly_income or 25000))
+        avg_monthly_spending = float(user_data.get("avg_monthly_expense", payload.avg_monthly_spending or 18000))
 
-        # Prepare input
+        # 📊 7️⃣ Prepare input safely
         days = payload.days or 7
         recent = [float(x) for x in (payload.recent_expenses or [])]
-        while len(recent) < 7:
-            recent.insert(0, recent[0] if recent else 0)
-        avg7_total = float(payload.avg7_total or np.mean(recent))
+        if not recent:
+            recent = [avg_monthly_spending / 30] * 7  # fallback if no data
 
-        # Predict future
+        while len(recent) < 7:
+            recent.insert(0, recent[0])
+
+        avg7_total = float(payload.avg7_total or np.mean(recent))
+        if np.isnan(avg7_total) or avg7_total == 0:
+            avg7_total = np.mean(recent)
+
+        # 🔮 8️⃣ Predict future spending
         preds = []
         income_factor = max(0.2, min(avg_monthly_spending / monthly_income, 1.0))
+
         for _ in range(days):
             avg_recent = np.mean(recent[-7:])
             nxt = float(exp_model.predict(pd.DataFrame({"avg7_total": [avg_recent]}))[0])
             nxt *= 1 + (income_factor - 0.5) * 0.05
-            preds.append(nxt)
+            preds.append(round(nxt, 2))
             recent.append(nxt)
 
         predicted_cum = float(sum(preds))
         max_weekly_limit = max(avg_monthly_spending * 0.3, monthly_income * 0.25)
         predicted_cum = min(predicted_cum, max_weekly_limit)
 
-        last7_cum = sum(payload.recent_expenses) if payload.recent_expenses else None
+        last7_cum = sum(payload.recent_expenses or []) or np.mean(preds) * 7
 
-        # =======================================
-        # 🧩 Realistic Recommendation Logic
-        # =======================================
+        # 💬 9️⃣ Generate realistic recommendations
         recs = []
 
         # Trend analysis
@@ -265,16 +292,19 @@ def predict_expense(payload: ExpensePredictIn):
         suggested_saving = max(500, monthly_income * 0.05)
         recs.append(f"💡 Try saving around ₹{int(suggested_saving)} this week to stay on track for monthly goals.")
 
+        # ✅ Final response
         return {
             "predictions": preds,
-            "predicted_cumulative": predicted_cum,
-            "last7_cumulative": last7_cum,
+            "predicted_cumulative": round(predicted_cum, 2),
+            "last7_cumulative": round(last7_cum, 2),
             "income_factor": round(income_factor, 2),
             "recommendation": recs
         }
 
     except Exception as e:
+        print("❌ Expense Prediction Error:", e)
         raise HTTPException(status_code=500, detail=str(e))
+
 
 
 # ==========================================

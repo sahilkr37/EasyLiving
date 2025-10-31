@@ -29,7 +29,13 @@ export const protect = async (req, res, next) => {
             return res.status(401).json({ message: "No token, authorization denied" });
         }
     } catch (error) {
-        console.error("Auth Middleware Error:", error);
-        return res.status(401).json({ message: "Token is invalid or expired" });
+        console.error("Auth Middleware Error:", error.message);
+        console.log("🧩 Token received:", token);
+        console.log("🔑 JWT_SECRET used:", process.env.JWT_SECRET);
+
+        return res.status(401).json({
+            message: "Token is invalid or expired",
+            error: error.message,
+        });
     }
 };
