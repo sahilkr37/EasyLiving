@@ -1,4 +1,5 @@
 import MoodLog from "../models/MoodLog.js";
+import User from "../models/User.js";
 import { getGeminiResponse } from "../utils/gemini.js";
 
 export const chatWithAI = async (req, res) => {
@@ -41,5 +42,85 @@ Reply:
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "AI error" });
+    }
+};
+
+export const caretakerSummary = async (req, res) => {
+
+    try {
+
+        const caretakerId = req.user.id;
+
+        // 🔥 Fetch all elders of caretaker
+        const elders = await User.find({
+            caretakerIds: { $in: [caretakerId] }
+        });
+
+        let elderData = "";
+
+        // 🔥 Get 7-day data for each elder
+        for (const elder of elders) {
+
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+            const logs = await MoodLog.find({
+                userId: elder._id,
+                createdAt: { $gte: sevenDaysAgo }
+            }).sort({ createdAt: 1 });
+
+            elderData += `
+
+Elder Name: ${elder.name}
+
+`;
+
+            logs.forEach((log) => {
+
+                elderData += `
+Date: ${log.createdAt.toDateString()}
+Mood: ${log.predictedMood}
+Sleep: ${log.sleepHours} hours
+Screen Time: ${log.screenTimeHours} hours
+Exercise: ${log.exerciseMinutes} minutes
+
+`;
+
+            });
+        }
+
+        // 🔥 Gemini Prompt
+        const prompt = `
+
+You are an AI health assistant helping a caretaker.
+
+Analyze the following elderly data from the last 7 days.
+
+Tell:
+1. Which elder needs most attention
+2. Which elder is improving
+3. Any concerning lifestyle habits
+4. Keep answer short, human-like, and easy to understand
+
+DATA:
+${elderData}
+
+`;
+
+        const summary = await getGeminiResponse(prompt);
+
+        res.json({
+            success: true,
+            summary
+        });
+
+    } catch (err) {
+
+        console.error("Caretaker AI Error:", err);
+
+        res.status(500).json({
+            success: false,
+            message: "Failed to generate summary"
+        });
     }
 };
