@@ -72,6 +72,43 @@ export default function ElderlyWellnessDashboard() {
             console.error("❌ Error fetching logs:", err);
         }
     }
+    const triggerSOS = () => {
+
+        navigator.geolocation.getCurrentPosition(
+
+            async (position) => {
+
+                try {
+
+                    const latitude = position.coords.latitude;
+                    const longitude = position.coords.longitude;
+
+                    const res = await API.post("/api/sos/trigger", {
+                        latitude,
+                        longitude
+                    });
+
+                    alert("🚨 SOS Sent Successfully");
+
+                    console.log(res.data);
+
+                } catch (err) {
+
+                    console.error(err);
+
+                    alert("Failed to send SOS");
+                }
+
+            },
+
+            (err) => {
+
+                console.error(err);
+
+                alert("Location permission denied");
+            }
+        );
+    };
 
     async function fetchStats() {
         try {
@@ -219,14 +256,22 @@ export default function ElderlyWellnessDashboard() {
 
             <div className="pt-24 px-6 pb-10">
                 <div className="max-w-6xl mx-auto">
-                    <header className="mb-8">
-                        <h1 className="text-2xl font-semibold text-gray-900">
-                            Welcome back 👋
-                        </h1>
-                        <p className="text-gray-600">
-                            A quick overview of your wellness journey.
-                        </p>
-                    </header>
+                    <div className="flex justify-between items-center mb-6">
+                        <header className="mb-8">
+                            <h1 className="text-2xl font-semibold text-gray-900">
+                                Welcome back 👋
+                            </h1>
+                            <p className="text-gray-600">
+                                A quick overview of your wellness journey.
+                            </p>
+                        </header>
+                        <button
+                            onClick={triggerSOS}
+                            className="bg-red-600 hover:bg-red-700 text-white px-5 py-3 rounded-xl shadow-lg"
+                        >
+                            🚨 Emergency
+                        </button>
+                    </div>
 
                     <StatsCards
                         stats={stats}

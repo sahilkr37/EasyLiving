@@ -3,6 +3,7 @@ import API from "../api/axiosConfig";
 import Navbar from "../components/Navbar";
 import HistoryGraphModal from "../components/HistoryGraphModal";
 import CaretakerAI from "../components/CaretakerAI";
+import SOSAlerts from "../components/SOSAlerts";
 
 export default function CaretakerDashboard() {
     const [email, setEmail] = useState("");
@@ -95,6 +96,7 @@ export default function CaretakerDashboard() {
                 <h1 className="text-2xl font-bold mt-20 mb-6">
                     👨‍⚕️ Caretaker Dashboard
                 </h1>
+                <SOSAlerts />
 
                 {/* 🔥 ADD ELDER */}
                 <div className="mb-6">
